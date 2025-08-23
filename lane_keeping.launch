@@ -1,0 +1,48 @@
+<launch>
+  <!-- Set your robot namespace (e.g., duckiebot name) if using multi-robot -->
+  <arg name="veh" default="$(env VEHICLE_NAME)" />
+
+  <group ns="$(arg veh)">
+    <!-- Node -->
+    <node pkg="duckie_lane" type="lane_keeping_pid_turnaware_node.py" name="lane_keeping_node" output="screen">
+      <!-- Topics (match your bot) -->
+      <param name="camera_topic" value="camera_node/image/raw" />
+      <param name="cmd_topic" value="wheels_driver_node/car_cmd" />
+      <param name="debug_topic" value="lane_keeping/debug_image" />
+
+      <!-- Controller Tunables -->
+      <param name="kp" value="0.010" />
+      <param name="ki" value="0.0003" />
+      <param name="kd" value="0.003" />
+      <param name="base_speed" value="0.35" />
+      <param name="min_speed" value="0.08" />
+      <param name="max_speed" value="0.55" />
+
+      <param name="roi_top" value="0.35" />
+      <param name="white_right_gate" value="0.58" />
+      <param name="use_white_fallback" value="true" />
+
+      <!-- Recovery / Turn awareness -->
+      <param name="lost_frames_to_search" value="10" />
+      <param name="sweep_gain" value="0.55" />
+      <param name="sweep_period_frames" value="12" />
+
+      <param name="turn_hysteresis" value="3" />
+      <param name="turn_hold_frames" value="30" />
+      <param name="turn_steer_bias" value="0.40" />
+      <param name="turn_center_factor" value="0.30" />
+      <param name="turn_speed_scale" value="0.70" />
+      <param name="turn_ramp_gain" value="0.40" />
+
+      <!-- Output scaling & safety -->
+      <param name="wheel_gain" value="1.0" />
+      <param name="steer_gain" value="1.0" />
+      <param name="wheel_limit" value="1.0" />
+
+      <!-- Visualization -->
+      <param name="publish_debug_image" value="true" />
+      <param name="use_imshow" value="false" />
+      <param name="target_hz" value="20.0" />
+    </node>
+  </group>
+</launch>
