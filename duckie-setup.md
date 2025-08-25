@@ -5,6 +5,7 @@
 3. 在C盘根下建立文件夹duckiesim
 4. 运行命令：docker run -ti --net=host --ipc=host -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix -v /mnt/c/duckiesim:/workspace --env="QT_X11_NO_MITSHM=1" --name duckie duckietown/gym-duckietown bash
 5. 容器内运行命令：apt update && apt install -y fontconfig libglib2.0-0
+6. 容器内运行命令：pip install stable_baselines3
 7. 退出容器：exit
 8. 保存更改：docker commit duckie updated_duckietown_image
 
