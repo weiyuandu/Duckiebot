@@ -75,4 +75,9 @@
 
 - **Lab1**：掌握运动控制与 PID 调参。  
 - **Lab2**：实现车道检测与障碍规避，形成基础自动驾驶能力。  
-- **Lab3**：引入交通标志和信号灯的识别与决策，让 Duckiebot 行为更接近真实交通场景。  
+- **Lab3**：引入交通标志和信号灯的识别与决策，让 Duckiebot 行为更接近真实交通场景。
+
+
+report link:  https://www.notion.so/CPS-Duckietown-Report-250192af408780bf9519c62ca5486e08?source=copy_link
+slides link:  https://tumde-my.sharepoint.com/:p:/g/personal/go69zug_tum_de/EYYgkq2WLWFNoQ0QcJK4PFEBbK8xNNI5GurfaGTvWmInrg
+
