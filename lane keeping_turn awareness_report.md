@@ -107,8 +107,7 @@ The figure below illustrates the finite state machine (FSM) of the algorithm.
 
     - Default state when at least one lane line is visible.
     - Lane center is estimated from visible lines (both or one).
-    - Steering command:  
-      ​![image](assets/image-20250827170848-yrg3yuo.png)with smoothing and curvature scaling.
+    - Steering command，with smoothing and curvature scaling.
     - Speed decreases slightly when steering magnitude is high.
 2. **Turn Mode (LEFT / RIGHT)**
 
@@ -125,9 +124,7 @@ The figure below illustrates the finite state machine (FSM) of the algorithm.
     - Behavior:
 
       - If the loss is short, steer gently toward the last known side.
-      - If the loss persists, perform sweeping search:
-
-        ![image](assets/image-20250827170930-u7m6yys.png)at very low speed (≈0.10).
+      - If the loss persists, perform sweeping search，at very low speed (≈0.10).
     - Mode exits immediately when one or both lines are reacquired.
 
 ### **5.2 Transitions**
@@ -138,4 +135,7 @@ The figure below illustrates the finite state machine (FSM) of the algorithm.
 - **Turn Mode → Recovery**: if the remaining line is also lost.
 - **Recovery → Normal**: when any lane line is detected again
 
-  ![image](assets/image-20250827171012-mxdx798.png)
+
+![State Machine](assets/lane_keeping_automaton.png)
+
+[Download PDF version](assets/lane_keeping_automaton.pdf)
