@@ -250,7 +250,7 @@ class LaneKeeperPIDTurnAware:
         else:                  # which == "white"
             return x_line - f * self.last_lane_width_ema
 
-    def detect_light(image):
+    def detect_light(self, image):
         h, w, _ = image.shape
         roi = image[0:int(h/3), int(w/3):int(2*w/3)]
         hsv = cv2.cvtColor(roi, cv2.COLOR_RGB2HSV)
@@ -282,6 +282,14 @@ class LaneKeeperPIDTurnAware:
     # ------------------------------- Step --------------------------------- #
 
     def step(self, obs):
+        """Detect traffic light"""
+        light = self.detect_light(obs)
+        if light == "RED":
+            vis = obs.copy()
+            cv2.putText(vis, "RED LIGHT - STOP", (20, 40),
+                        cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 255), 2)
+            return 0.0, 0.0, vis, light
+                
         """Compute (steer, speed, debug_vis) for a single observation."""
         hsv, lab = self._preprocess(obs)
         h, w = hsv.shape[:2]
@@ -447,7 +455,7 @@ class LaneKeeperPIDTurnAware:
             hud += f" width_ema={self.last_lane_width_ema:.1f}"
         cv2.putText(vis, hud, (6, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (40, 220, 40), 1, cv2.LINE_AA)
 
-        return float(steer), float(speed_cmd), vis
+        return float(steer), float(speed_cmd), vis, light
 
 
 # ================================= Main ==================================== #
@@ -519,13 +527,13 @@ def main():
 
     try:
         while True:
-            steer, speed_cmd, vis_img = controller.step(obs)
+            steer, speed_cmd, vis_img, light = controller.step(obs)
             action = np.array([speed_cmd, -steer], dtype=np.float32)  # env expects negative steer sign
             obs, reward, done, info = env.step(action)
 
             pos = env.unwrapped.cur_pos
             angle = env.unwrapped.cur_angle
-            trace.append((steps, pos.tolist(), float(angle), float(reward)))
+            trace.append((steps, pos.tolist(), float(angle), float(reward), light))
 
             if not args.headless:
                 env.render()
@@ -555,6 +563,11 @@ def main():
         xs = [p[1][0] for p in trace]
         ys = [p[1][2] for p in trace]
         plt.plot(xs, ys, "-o")
+        
+        red_xs = [p[1][0] for p in trace if p[4] == "RED"]
+        red_ys = [p[1][2] for p in trace if p[4] == "RED"]
+        plt.scatter(red_xs, red_ys, c="red", marker="x", s=100, label="red light stop")
+
 
         plt.grid(True, which="both", linestyle="--", linewidth=0.5)
         plt.xlabel("x (m)")

@@ -8,8 +8,8 @@ tiles:
 objects:
 # Traffic light in the middle of the map
 - kind: trafficlight
-  pos: [2.9, 2.9]
+  pos: [2.9, 2.7]
   rotate: 180
-  height: 0.4
+  height: 0.25
   optional: true
   switch: true
