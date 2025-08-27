@@ -79,5 +79,5 @@
 
 
 report link:  https://www.notion.so/CPS-Duckietown-Report-250192af408780bf9519c62ca5486e08?source=copy_link
-slides link:  https://tumde-my.sharepoint.com/:p:/g/personal/go69zug_tum_de/EYYgkq2WLWFNoQ0QcJK4PFEBbK8xNNI5GurfaGTvWmInrg
+
 
