@@ -25,6 +25,8 @@ import numpy as np
 import cv2
 from gym_duckietown.envs import DuckietownEnv
 
+import json
+import matplotlib.pyplot as plt
 
 # =============================== Configs =================================== #
 
@@ -247,7 +249,7 @@ class LaneKeeperPIDTurnAware:
             return x_line + f * self.last_lane_width_ema
         else:                  # which == "white"
             return x_line - f * self.last_lane_width_ema
-        
+
     def detect_light(image):
         h, w, _ = image.shape
         roi = image[0:int(h/3), int(w/3):int(2*w/3)]
@@ -507,16 +509,23 @@ def main():
         draw_curve=False,
         draw_bbox=False
     )
+
     obs = env.reset()
 
     dt = 1.0 / max(1e-6, args.fps)
     steps = 0
+
+    trace = []
 
     try:
         while True:
             steer, speed_cmd, vis_img = controller.step(obs)
             action = np.array([speed_cmd, -steer], dtype=np.float32)  # env expects negative steer sign
             obs, reward, done, info = env.step(action)
+
+            pos = env.unwrapped.cur_pos
+            angle = env.unwrapped.cur_angle
+            trace.append((steps, pos.tolist(), float(angle), float(reward)))
 
             if not args.headless:
                 env.render()
@@ -539,6 +548,26 @@ def main():
             steps += 1
     finally:
         env.close()
+
+        with open("trace.json", "w") as f:
+            json.dump(trace, f, indent=2)
+
+        xs = [p[1][0] for p in trace]
+        ys = [p[1][2] for p in trace]
+        plt.plot(xs, ys, "-o")
+
+        plt.grid(True, which="both", linestyle="--", linewidth=0.5)
+        plt.xlabel("x (m)")
+        plt.ylabel("z (m)")
+        plt.title("Duckiebot trace")
+        plt.axis("equal")
+        plt.legend()
+
+        plt.savefig("trace.png", dpi=300)
+        plt.show()
+        plt.close()
+
+
         if not args.headless:
             cv2.destroyAllWindows()
         print(f"[INFO] Finished after {steps} steps")
