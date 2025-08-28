@@ -346,214 +346,124 @@ class SquareControllerNode(DTROS):
         else:
             rospy.logwarn(f"Unknown state: {self._state}")
 
-    def _do_straight_side(self, side_num):
-        """
-        Execute straight line movement for one side of the square
-        """
-        # Initialize segment tracking
-        if not hasattr(self, f'_side{side_num}_started'):
-            self.segment_start_dist = self.dist
-            self.segment_start_angle = self.theta_curr
-            setattr(self, f'_side{side_num}_started', True)
-            rospy.loginfo(f"Starting side {side_num} at distance {self.dist:.3f}m, angle {np.rad2deg(self.theta_curr):.1f}°")
-
-        # Calculate distance traveled on this side
-        distance_traveled = self.dist - self.segment_start_dist
-
-        # Check if side is completed
-        if distance_traveled >= self.side_length - self.dist_threshold:
-            self.publishCmd((0, 0))
-            rospy.loginfo(f"Side {side_num} completed! Traveled: {distance_traveled:.3f}m")
+    def set_led_color(self, r, g, b, color_name):
+        """Set LED color using RGB values like the widget"""
+        try:
+            # Create LED pattern message
+            pattern = LEDPattern()
             
-            # Remove the side started flag
-            delattr(self, f'_side{side_num}_started')
+            # Set all 5 LEDs to the same color (like in the widget)
+            for i in range(5):
+                led_color = ColorRGBA()
+                led_color.r = r
+                led_color.g = g
+                led_color.b = b
+                led_color.a = self._intensity
+                pattern.rgb_vals.append(led_color)
             
-            # Transition to next turn state
-            next_states = {
-                1: _SquareState.TURN1,
-                2: _SquareState.TURN2,
-                3: _SquareState.TURN3,
-                4: _SquareState.TURN4
-            }
-            self._set_state(next_states[side_num])
-            return
-
-        # Continue moving forward with angle correction
-        v = self.speed_gain
-        omega = self._calculate_straight_correction()
-        self.publishCmd((v, omega))
-        
-        rospy.loginfo(f"Side {side_num}: {distance_traveled:.3f}/{self.side_length:.3f}m, correction: {omega:.3f}")
-
-    def _do_turn(self, turn_num):
-        """
-        Execute 90-degree left turn
-        """
-        # Initialize turn tracking
-        if not hasattr(self, f'_turn{turn_num}_started'):
-            self.segment_start_angle = self.theta_curr
-            setattr(self, f'_turn{turn_num}_started', True)
-            rospy.loginfo(f"Starting turn {turn_num} at angle {np.rad2deg(self.theta_curr):.1f}°")
-
-        # Calculate target angle (90 degrees counterclockwise)
-        target_angle = self.segment_start_angle + self.turn_angle
-        target_angle = self.angle_clamp(target_angle)
-
-        # Calculate angle difference
-        angle_diff = self._calculate_angle_diff(self.theta_curr, target_angle)
-
-        # Check if turn is completed
-        if abs(angle_diff) <= self.angle_threshold:
-            self.publishCmd((0, 0))
-            rospy.loginfo(f"Turn {turn_num} completed! Final angle: {np.rad2deg(self.theta_curr):.1f}°")
+            # Publish the pattern
+            self._led_publisher.publish(pattern)
+            self.log(f" LED pattern published: RGB[{r}, {g}, {b}]")
             
-            # Remove the turn started flag
-            delattr(self, f'_turn{turn_num}_started')
-            
-            # Transition to next state
-            if turn_num < 4:
-                next_states = {
-                    1: _SquareState.SIDE2,
-                    2: _SquareState.SIDE3,
-                    3: _SquareState.SIDE4
-                }
-                self._set_state(next_states[turn_num])
-            else:
-                self._set_state(_SquareState.COMPLETE)
-            return
+        except Exception as e:
+            self.logwarn(f"Failed to publish LED pattern: {str(e)}")
 
-        # Continue turning
-        v = 0.0  # No forward movement during turn
-        omega = self.steer_gain if angle_diff > 0 else -self.steer_gain
-        self.publishCmd((v, omega))
-        
-        rospy.loginfo(f"Turn {turn_num}: angle diff {np.rad2deg(angle_diff):.1f}°")
+    def turn_off_leds(self):
+        """Turn off all LEDs"""
+        self.set_led_color(0.0, 0.0, 0.0, "OFF")
 
-    def _do_complete(self):
-        """
-        Square path completed
-        """
-        self.publishCmd((0, 0))
-        total_time = time.time() - self.start_time
-        
-        rospy.loginfo("🎉 Square path completed!")
-        rospy.loginfo(f"Total execution time: {total_time:.2f} seconds")
-        rospy.loginfo(f"Final position: x={self.x_curr:.3f}m, y={self.y_curr:.3f}m, θ={np.rad2deg(self.theta_curr):.1f}°")
-        rospy.loginfo(f"Total distance traveled: {self.dist:.3f}m")
-        
-        self.world_frame_bag.close()
-        
-        # Signal shutdown
-        self.pub_shutdown_cmd.publish(Empty())
-        rospy.signal_shutdown("Square path completed!")
-
-    def _calculate_straight_correction(self):
-        """
-        Calculate angular velocity correction to maintain straight line
-        """
-        if hasattr(self, 'segment_start_angle'):
-            target_angle = self.segment_start_angle
-            angle_error = self._calculate_angle_diff(self.theta_curr, target_angle)
-            return -self.correction_gain * angle_error
-        else:
-            return 0.0
-
-    def _calculate_angle_diff(self, current, target):
-        """
-        Calculate the smallest angle difference between current and target (-π, π)
-        """
-        diff = target - current
-        while diff > np.pi:
-            diff -= 2 * np.pi
-        while diff < -np.pi:
-            diff += 2 * np.pi
-        return diff
-
-    def publishCmd(self, u):
-        """
-        Publish car command message
-        """
+    def publish_car_cmd(self, linear_v, angular_v):
+        """Publish a car command (adapted from EncoderPoseNode)"""
         car_control_msg = Twist2DStamped()
         car_control_msg.header.stamp = rospy.Time.now()
-        car_control_msg.v = u[0]      # linear velocity
-        car_control_msg.omega = u[1]  # angular velocity
+        car_control_msg.v = linear_v      # linear velocity
+        car_control_msg.omega = angular_v # angular velocity
         self._car_cmd_publisher.publish(car_control_msg)
+        
+        # Debug output to confirm commands are being sent
+        if linear_v != 0 or angular_v != 0:
+            self.log(f"🚗 Sending cmd: v={linear_v:.2f}, ω={angular_v:.2f}")
 
-    def angle_clamp(self, theta):
-        """
-        Clamp angle to [0, 2π)
-        """
-        if theta >= 2 * np.pi:
-            return theta - 2 * np.pi
-        elif theta < 0:
-            return theta + 2 * np.pi
-        else:
-            return theta
+    def stop_robot(self):
+        """Stop the robot"""
+        self.publish_car_cmd(0.0, 0.0)
 
-    def _stop(self):
-        """
-        Stop state: change LEDs to red and stop
-        """
-        self._set_state(_SquareState.STOP)
+    def move_forward(self, duration):
+        """Move forward for specified duration"""
+        self.log(f"Moving forward for {duration:.2f} seconds")
+        rate = rospy.Rate(10)  # 10 Hz
+        end_time = rospy.Time.now() + rospy.Duration(duration)
+        
+        while rospy.Time.now() < end_time and not rospy.is_shutdown():
+            self.publish_car_cmd(self._linear_velocity, 0.0)
+            rate.sleep()
+        
+        self.stop_robot()
 
-    def _set_state(self, state: _SquareState):
-        """
-        Set the state and change LED color
-        """
-        rospy.loginfo(f"=== Setting state to {state}")
-        self._state = state
+    def turn_left(self, duration):
+        """Turn left (counterclockwise) for specified duration"""
+        self.log(f"Turning left for {duration:.2f} seconds")
+        rate = rospy.Rate(10)  # 10 Hz
+        end_time = rospy.Time.now() + rospy.Duration(duration)
+        
+        while rospy.Time.now() < end_time and not rospy.is_shutdown():
+            self.publish_car_cmd(0.0, self._angular_velocity)
+            rate.sleep()
+        
+        self.stop_robot()
 
-        # Set LED color
-        try:
-            if self.use_led_service and state in self._light_colour:
-                msg = self._light_colour[state]
-                self._light_service(msg)
-            elif state in self._rgb_colours:
-                self._set_led_pattern(self._rgb_colours[state])
-        except Exception as e:
-            rospy.logwarn(f"Failed to set LED: {e}")
-
-        if state == _SquareState.STOP:
-            rospy.sleep(2.0)
-
-    def _set_led_pattern(self, rgb):
-        """
-        Set LED pattern using RGB values
-        """
-        try:
-            pattern = LEDPattern()
-            for i in range(5):  # 5 LEDs
-                led_color = ColorRGBA()
-                led_color.r = rgb[0]
-                led_color.g = rgb[1]
-                led_color.b = rgb[2]
-                led_color.a = 1.0
-                pattern.rgb_vals.append(led_color)
-            self._led_publisher.publish(pattern)
-        except Exception as e:
-            rospy.logwarn(f"Failed to publish LED pattern: {e}")
+    def execute_square(self):
+        """Execute one complete square movement"""
+        self.log("Starting square movement...")
+        
+        for corner in range(4):
+            if rospy.is_shutdown():
+                break
+                
+            # Set LED color for this corner
+            rgb = self._corner_colors[corner]
+            color_names = ["RED", "GREEN", "BLUE", "WHITE"]
+            color_name = color_names[corner]
+            
+            self.set_led_color(rgb[0], rgb[1], rgb[2], color_name)
+            self.log(f"Corner {corner + 1}: LED set to {color_name} [{rgb[0]}, {rgb[1]}, {rgb[2]}]")
+            
+            # Small pause to see the color change
+            rospy.sleep(1.0)
+            
+            # Move forward along the edge
+            self.move_forward(self._move_time)
+            
+            # Small pause between movement and turn
+            rospy.sleep(0.5)
+            
+            # Turn left 90 degrees (except after the last edge)
+            if corner < 3:  # Don't turn after the 4th edge
+                self.turn_left(self._turn_time)
+                rospy.sleep(0.5)
+        
+        # Turn off LEDs when done
+        self.turn_off_leds()
+        self.log("LEDs turned off")
+        self.log("Square movement completed!")
 
     def run(self):
-        """
-        Main run loop for state machine
-        """
-        # State machine runs through encoder callbacks
-        # Just keep the node alive
-        rospy.spin()
+        """Main run loop"""
+        # Wait a bit for everything to initialize
+        rospy.sleep(2.0)
+        
+        # Execute the square movement
+        self.execute_square()
+        
+        # Keep node alive for a bit
+        rospy.sleep(2.0)
 
     def on_shutdown(self):
         """Cleanup when shutting down"""
-        self.publishCmd((0, 0))
-        try:
-            self._set_led_pattern([0.0, 0.0, 0.0])  # Turn off LEDs
-        except:
-            pass
-        try:
-            self.world_frame_bag.close()
-        except:
-            pass
+        self.stop_robot()
+        self.turn_off_leds()
+        self.log("LEDs turned off")
         self.log("Square controller shutting down...")
-
 
 if __name__ == '__main__':
     node = SquareControllerNode(node_name='square_controller_node')
@@ -565,3 +475,5 @@ if __name__ == '__main__':
         node.run()
     except rospy.ROSInterruptException:
         pass
+    
+    rospy.spin()
