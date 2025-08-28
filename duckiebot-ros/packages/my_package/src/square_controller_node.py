@@ -166,7 +166,7 @@ class SquareControllerNode(DTROS):
         
         # Turn off LEDs when done
         self.turn_off_leds()
-        self.log("🎨 LEDs turned off")
+        self.log("LEDs turned off")
         self.log("Square movement completed!")
 
     def run(self):
@@ -184,7 +184,7 @@ class SquareControllerNode(DTROS):
         """Cleanup when shutting down"""
         self.stop_robot()
         self.turn_off_leds()
-        self.log("🎨 LEDs turned off")
+        self.log("LEDs turned off")
         self.log("Square controller shutting down...")
 
 if __name__ == '__main__':
