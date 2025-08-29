@@ -2,20 +2,25 @@
 
 ---
 
-## Lab1 Open Loop and PID Control
+## Lab1 Duckiebot Control and Open-loop Test
 
 **目标**  
-- 熟悉 Duckiebot 的基本运动控制。  
-- 实现基于 PID 的速度和转向控制。  
+- 熟悉 Duckiebot 的基本运动控制。
+- 熟悉 Duckiebot 的Led灯控制
+- 实现基于左右轮转速计算的精准定位
 
 **任务**  
-1. **Open Loop Control**  
-   - 通过给定固定的转速指令，让 Duckiebot 前进、后退、旋转。  
-   - 观察实际运行轨迹与预期的差异。  
+1. **Color Recongnization**  
+   - 通过摄像头读取环境信息，获取颜色方块，并在视频窗口中标记颜色和区域
+   - 根据识别到的颜色改变LED颜色
+   - 支持（绿色，黄色，蓝色），可扩展到其他颜色
+  
 
-2. **PID Control**  
-   - 使用 IMU/里程计反馈，调试 PID 控制器，实现稳定的速度与角度控制。  
-   - 分别测试 P、PI、PID 的效果差异。  
+2. **Open-Loop Control**
+   - 使用时间控制的状态机，实现小车从起点出发，完成一个边长为1m的正方形轨迹，而后回到起点
+   - 使用状态机控制，实现上述目标
+   - 使用 IMU/里程计记录小车空间位置变化并记录
+   - 使用Python Matplotlib绘制小车从起始点到结束的空间位置
 
 ---
 
