@@ -34,6 +34,28 @@
 - `odometry_activity.py`：轮编码器运动学计算
 - `odometry_node.py`：发布里程计与位姿
 
+1. 轮子旋转角度（弧度）
+左轮：
+$$ \Delta\phi_L = \frac{2\pi \cdot \Delta N_L}{N_{tot}} $$
+右轮：
+$$ \Delta\phi_R = \frac{2\pi \cdot \Delta N_R}{N_{tot}} $$
+其中 $\Delta N_L, \Delta N_R$ 为编码器tick变化，$N_{tot}$ 为每圈tick数。
+2. 轮子行驶距离
+左轮：
+$$ \Delta s_L = R \cdot \Delta\phi_L $$
+右轮：
+$$ \Delta s_R = R \cdot \Delta\phi_R $$
+$R$ 为轮半径。
+3. 机器人位姿增量
+距离增量：
+$$ \Delta s = \frac{\Delta s_L + \Delta s_R}{2} $$
+朝向增量：
+$$ \Delta\theta = \frac{\Delta s_R - \Delta s_L}{B} $$
+$B$ 为轮距（baseline）。
+4. 新位姿计算
+新位置：
+$$ \begin{align*} x_{new} &= x_{prev} + \Delta s \cdot \cos(\theta_{prev} + \frac{\Delta\theta}{2}) \ y_{new} &= y_{prev} + \Delta s \cdot \sin(\theta_{prev} + \frac{\Delta\theta}{2}) \ \theta_{new} &= \theta_{prev} + \Delta\theta \end{align*} $$
+
 ---
 
 ## Lab2 Lane Following and Obstacle Avoidance
