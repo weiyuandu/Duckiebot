@@ -1,26 +1,37 @@
 # Duckiebot Lab
 
 ---
-
-## Lab1 Duckiebot Control and Open-loop Test
+## Lab1 Open Loop and Feedback Control
 
 **目标**  
-- 熟悉 Duckiebot 的基本运动控制。
-- 熟悉 Duckiebot 的Led灯控制
-- 实现基于左右轮转速计算的精准定位
+- 掌握 Duckiebot 基本运动控制、状态机和编码器反馈。
 
-**任务**  
-1. **Color Recongnization**  
-   - 通过摄像头读取环境信息，获取颜色方块，并在视频窗口中标记颜色和区域
-   - 根据识别到的颜色改变LED颜色
-   - 支持（绿色，黄色，蓝色），可扩展到其他颜色
-  
+### 功能模块概览
 
-2. **Open-Loop Control**
-   - 使用时间控制的状态机，实现小车从起点出发，完成一个边长为1m的正方形轨迹，而后回到起点
-   - 使用状态机控制，实现上述目标
-   - 使用 IMU/里程计记录小车空间位置变化并记录
-   - 使用Python Matplotlib绘制小车从起始点到结束的空间位置
+#### 1. 基础控制
+- `my_publisher_node.py` / `my_subscriber_node.py`：ROS 通信示例
+- `twist_control_node.py`：Twist 指令控制
+- `wheel_control_node.py`：左右轮速独立控制
+- `wheel_encoder_reader_node.py`：读取轮编码器数据
+
+#### 2. 视觉感知
+- `camera_reader_node.py`：检测颜色并切换 LED
+- 通过摄像头读取环境信息，获取颜色方块，并在视频窗口中标记颜色和区域
+- 根据识别到的颜色改变LED颜色
+- 支持（绿色，黄色，蓝色），可扩展到其他颜色
+
+
+#### 3. 运动控制
+- `square_controller_node.py`：开环，按时间驱动正方形轨迹，LED 变色
+- 使用时间控制的状态机，实现小车从起点出发，完成一个边长为1m的正方形轨迹，而后回到起点
+- `square_controller_state_machine_node.py`：闭环，状态机+编码器反馈，精准正方形轨迹
+- 使用状态机控制，实现上述目标
+- 使用 IMU/里程计记录小车空间位置变化并记录
+- 使用Python Matplotlib绘制小车从起始点到结束的空间位置
+
+#### 4. 里程计
+- `odometry_activity.py`：轮编码器运动学计算
+- `odometry_node.py`：发布里程计与位姿
 
 ---
 
