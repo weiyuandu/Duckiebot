@@ -278,6 +278,58 @@ class LaneKeeperPIDTurnAware:
 
             return None
 
+    def detect_sign(self, image):
+        h, w, _ = image.shape
+        roi = image[int(h/3):int(2 * h/3), int(2 * w/3):w]
+        hsv = cv2.cvtColor(image, cv2.COLOR_RGB2HSV)
+
+        """STOP"""
+        lower_red1 = np.array([0, 100, 100])
+        upper_red1 = np.array([10, 255, 255])
+        lower_red2 = np.array([160, 100, 100])
+        upper_red2 = np.array([179, 255, 255])
+        red_mask = cv2.inRange(hsv, lower_red1, upper_red1) | cv2.inRange(hsv, lower_red2, upper_red2)
+
+        """SLOW"""
+        lower_yellow = np.array([20, 100, 100])
+        upper_yellow = np.array([35, 255, 255])
+        yellow_mask = cv2.inRange(hsv, lower_yellow, upper_yellow)
+
+        contours_red, _ = cv2.findContours(red_mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        contours_yellow, _ = cv2.findContours(yellow_mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+        for cnt in contours_red:
+            area = cv2.contourArea(cnt)
+            if area > 300:
+                approx = cv2.approxPolyDP(cnt, 0.04 * cv2.arcLength(cnt, True), True)
+                if len(approx) >= 6:
+                    x, y, w, h =cv2.boundingRect(cnt)
+                    cv2.putText(image, "STOP", (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 0, 0), 2)
+                    return "STOP"
+
+        for cnt in contours_yellow:
+            area = cv2.contourArea(cnt)
+            if area > 300:
+                approx = cv2.approxPolyDP(cnt, 0.04 * cv2.arcLength(cnt, True), True)
+                if len(approx) == 4:
+                    x, y, w_box, h_box =cv2.boundingRect(cnt)
+
+                    aspect_r = float(w_box) / h_box
+                    if not (0.8 < aspect_r < 1.2):
+                        continue
+
+                    rect = cv2.minAreaRect(cnt)
+                    angle = rect[2]
+
+                    if not (20 < abs(angle) < 70):
+                        continue
+
+                    if y + h_box > 0.8 * h:
+                        continue
+
+                    cv2.putText(image, "SLOW", (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 255), 2)
+                    return "SLOW"
+        return None
 
     # ------------------------------- Step --------------------------------- #
 
@@ -286,10 +338,18 @@ class LaneKeeperPIDTurnAware:
         light = self.detect_light(obs)
         if light == "RED":
             vis = obs.copy()
-            cv2.putText(vis, "RED LIGHT - STOP", (20, 40),
-                        cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 255), 2)
+            cv2.putText(vis, "STOP!", (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 0, 0), 2)
             return 0.0, 0.0, vis, light
-                
+
+        """Detect traffic sign"""
+        sign = self.detect_sign(obs)
+
+        if sign == "STOP":
+            return 0.0, 0.0, obs.copy(), sign
+
+        elif sign == "SLOW":
+            return 0.0, 0.15, obs.copy(), sign
+
         """Compute (steer, speed, debug_vis) for a single observation."""
         hsv, lab = self._preprocess(obs)
         h, w = hsv.shape[:2]
@@ -455,7 +515,7 @@ class LaneKeeperPIDTurnAware:
             hud += f" width_ema={self.last_lane_width_ema:.1f}"
         cv2.putText(vis, hud, (6, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (40, 220, 40), 1, cv2.LINE_AA)
 
-        return float(steer), float(speed_cmd), vis, light
+        return float(steer), float(speed_cmd), vis, None
 
 
 # ================================= Main ==================================== #
@@ -527,13 +587,13 @@ def main():
 
     try:
         while True:
-            steer, speed_cmd, vis_img, light = controller.step(obs)
+            steer, speed_cmd, vis_img, signs = controller.step(obs)
             action = np.array([speed_cmd, -steer], dtype=np.float32)  # env expects negative steer sign
             obs, reward, done, info = env.step(action)
 
             pos = env.unwrapped.cur_pos
             angle = env.unwrapped.cur_angle
-            trace.append((steps, pos.tolist(), float(angle), float(reward), light))
+            trace.append((steps, pos.tolist(), float(angle), float(reward), signs))
 
             if not args.headless:
                 env.render()
@@ -563,11 +623,18 @@ def main():
         xs = [p[1][0] for p in trace]
         ys = [p[1][2] for p in trace]
         plt.plot(xs, ys, "-o")
-        
+
         red_xs = [p[1][0] for p in trace if p[4] == "RED"]
         red_ys = [p[1][2] for p in trace if p[4] == "RED"]
         plt.scatter(red_xs, red_ys, c="red", marker="x", s=100, label="red light stop")
 
+        stop_xs = [p[1][0] for p in trace if p[4] == "STOP"]
+        stop_ys = [p[1][2] for p in trace if p[4] == "STOP"]
+        plt.scatter(stop_xs, stop_ys, c="black", marker="x", s=100, label="STOP sign")
+
+        slow_xs = [p[1][0] for p in trace if p[4] == "SLOW"]
+        slow_ys = [p[1][2] for p in trace if p[4] == "SLOW"]
+        plt.scatter(slow_xs, slow_ys, c="yellow", marker="D", s=100, label="SLOW zone")
 
         plt.grid(True, which="both", linestyle="--", linewidth=0.5)
         plt.xlabel("x (m)")

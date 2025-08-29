@@ -4,7 +4,6 @@ tiles:
 - [straight/S   , asphalt   , straight/N]
 - [curve_left/S , straight/E, curve_left/E]
 
-
 objects:
 # Traffic light in the middle of the map
 - kind: trafficlight
@@ -13,3 +12,16 @@ objects:
   height: 0.25
   optional: true
   switch: true
+
+- kind: sign_stop
+  pos: [3.0, 1.0]
+  rotate: 270
+  scale: 0.8
+
+- kind: sign_pedestrian
+  pos: [0.0, 2.0]
+  rotate: 90
+  scale: 0.8
+
+
+tile_size: 0.585
