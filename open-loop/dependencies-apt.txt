@@ -1,4 +1,0 @@
-# LIST YOUR APT PACKAGES HERE
-python3-ruamel.yaml
-python3-cv-bridge
-python3-rosbag
