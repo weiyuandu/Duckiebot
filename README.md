@@ -1,14 +1,79 @@
-# Duckiebot Lab
+# Autonomous Driving System
 
 ---
-## Lab1 Open Loop and Feedback Control
+## About
+This project focuses on developing a self-driving vehicle system that combines lane-keeping, and road environment detection to mimic core autonomous driving behaviors.
+An opencv-based lane detection module keeps the vehicle on course using PID control.
+Road sign recognition adds to the autonomous capabilities of the vehicle, allowing it
+to respond appropriately to road signage. The perception modules feed into a decision layer that keeps track of various states of the vehicle to plan safe and efficient
+trajectories. Finally, a control layer translates high-level decisions into low-level motor commands for steering and speed. The autonomous driving system is written in
+python, and tested in the gym-duckietown simulator, ensuring maximum similarities
+with a real Duckietown environment. This project provides hands-on experience with
+computer vision and cyber-physical systems, building a foundation for more advanced
+autonomous vehicle research.
 
-**目标**  
-- 掌握 Duckiebot 基本运动控制、状态机和编码器反馈。
+## Setup
+One-time setup:
+Windows OS should install WSL, install docker inside WSL   
+Run：docker pull duckietown/gym-duckietown  
+Create C:\duckiesim on Windows host  
+Run these comands:  
+docker run -ti --net=host --ipc=host -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix -v /mnt/c/duckiesim:/gym_duckietown--env="QT_X11_NO_MITSHM=1" --name duckie duckietown/gym-duckietown bash  
+apt update && apt install -y fontconfig libglib2.0-0  
+pip install stable_baselines3  
+If you want to exit the container, run: exit  
 
-### 功能模块概览
+If you want to save changes, run: docker commit duckie updated_duckietown_image  
+You can start the simulator with：docker start -ai duckie
 
-#### 1. 基础控制
+Test your setup with python manual_control.py
+
+
+## Overview of the functionalities of different modules
+
+### main.py
+Primary Function: Main entry point and orchestration layer
+
+- Initializes the Duckietown simulation environment with configurable parameters
+- Creates and manages the lane keeping controller instance
+- Handles the main simulation loop and step execution
+- Processes command-line arguments for runtime configuration
+- Manages environment reset and graceful shutdown
+- Provides debug visualization when enabled
+- Coordinates between perception, control, and simulation components
+
+### perception.py
+Primary Function: Computer vision and environmental sensing
+- Image Preprocessing: Applies CLAHE (Contrast Limited Adaptive Histogram Equalization) on LAB color space to enhance contrast and handle varying lighting conditions
+- Lane Detection:  
+Yellow Lane Detection: Uses adaptive HSV thresholding with brightness-aware parameters for robust yellow line identification.   
+White Lane Detection: Combines LAB and HSV color spaces with adaptive thresholding, restricted to right-side search area
+- Robustness Features: Includes hysteresis tracking for lane disappearance and adaptive thresholding for varying lighting conditions
+
+### controller.py
+Primary Function: Decision making and control logic
+- PID Control System: Implements Proportional-Integral-Derivative controller with configurable gains
+- State Management: Maintains comprehensive state machine for different driving scenarios
+- Turn Awareness:  
+Detects when one lane marking disappears consistently
+Activates turn mode with appropriate steering bias  
+Implements ramp-up/down for smooth transition into and out of turns  
+Uses lane width estimation for single-line navigation
+- Traffic Sign Handling:  
+Stop Sign State Machine: Implements 3-second stop and 2-second crossing sequence
+Slow Sign Response: Reduces speed temporarily when SLOW signs are detected
+
+### utils.py
+Primary Function: Utility functions and helper operations  
+- Visualization Tools: Creates debug overlay displays showing lane detection results and mask visualizations
+- Geometry Utilities:  
+Estimates lane center from single detected line using exponential moving average of lane width  
+Updates lane width estimation with smoothing
+- Conversion Functions: Handles coordinate system transformations and normalization
+
+
+## 待更改区域
+### 1. 基础控制
 - `my_publisher_node.py` / `my_subscriber_node.py`：ROS 通信示例
 - `twist_control_node.py`：Twist 指令控制
 - `wheel_control_node.py`：左右轮速独立控制
@@ -55,58 +120,6 @@ $B$ 为轮距（baseline）。
 4. 新位姿计算
 新位置：
 $$ \begin{align*} x_{new} &= x_{prev} + \Delta s \cdot \cos(\theta_{prev} + \frac{\Delta\theta}{2}) \ y_{new} &= y_{prev} + \Delta s \cdot \sin(\theta_{prev} + \frac{\Delta\theta}{2}) \ \theta_{new} &= \theta_{prev} + \Delta\theta \end{align*} $$
-
----
-
-## Lab2 Lane Following and Obstacle Avoidance
-
-**目标**  
-- 让 Duckiebot 在道路中自动沿车道行驶。  
-- 检测和绕行简单障碍物（可选）。  
-  (等待修改）
-**子任务**  
-1. **车道检测（Lane Detection）**  
-   - 使用摄像头图像，通过颜色过滤（白/黄车道线）+ Canny 边缘检测 + 霍夫直线变换，提取车道边界。  
-   - 计算车身相对车道中心的偏移量和航向角误差。  
-
-2. **车道跟随（Lane Following）**  
-   - 将车道误差作为 PID 控制器的输入，实时调整左右轮速，实现自动居中。  
-
-3. **障碍物检测与避让（Obstacle Detection & Avoidance）**  
-   - 通过颜色过滤（红色小鸭/方块）检测障碍物区域。  
-   - 使用简单的几何规则（例如区域大小/位置）判断距离。  
-   - 遇到障碍时减速/停车，规划绕行路径（例如短暂偏离车道线）。  
-
----
-
-## Lab3 Road Signs and Traffic Lights Recognition
-
-**目标**  
-- 识别 Duckietown 中的路牌（Stop、Turn Left、Turn Right、T-Intersection 等）。  
-- 识别交通信号灯（红灯停车、绿灯通行）。  
-- 将识别结果融入自动驾驶决策。  
-（等待修改）
-**子任务**  
-1. **路牌识别（Road Sign Detection）**  
-   - **传统图像处理方法**：  
-     - 颜色阈值（例如蓝底、红边的标志）。  
-     - 形状检测（Hough 圆检测、轮廓匹配）。  
-   - **分类/识别**：  
-     - 提取 ROI（感兴趣区域），用模板匹配或小型 SVM 分类器判断是哪种标志。  
-
-2. **交通灯识别（Traffic Light Detection）**  
-   - 颜色分割：提取红、绿区域。  
-   - 圆形检测：用 Hough 圆检测灯泡区域。  
-   - 状态判别：红 → 停车，绿 → 前进。  
-
-3. **行为决策（Behavior Planning）**  
-   - **Stop Sign**：检测到后 → 停车 3 秒 → 再启动。  
-   - **Turn Signs**：在路口结合标志提示选择方向。  
-   - **Traffic Light**：红灯停车等待，绿灯通行。  
-
-**实验扩展**  
-- 与车道保持（Lab2）结合：在识别路牌/红绿灯后，需要暂停或改变车道控制策略。  
-- 添加更多交通规则（如优先通行、限速标志）。  
 
 ---
 
