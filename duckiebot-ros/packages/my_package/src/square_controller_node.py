@@ -96,7 +96,6 @@ class SquareControllerNode(DTROS):
         self.stop_robot()
 
     def turn_left(self, duration):
-        """Turn left (counterclockwise) for specified duration"""
         # self.log(f"Turning left for {duration:.2f} seconds")
         rate = rospy.Rate(10)  # 10 Hz
         end_time = rospy.Time.now() + rospy.Duration(duration)
@@ -108,7 +107,6 @@ class SquareControllerNode(DTROS):
         self.stop_robot()
 
     def execute_square(self):
-        """Execute one complete square movement"""
         self.log("Starting square movement...")
         
         for corner in range(4):
@@ -134,7 +132,6 @@ class SquareControllerNode(DTROS):
         self.log("Square movement completed!")
 
     def run(self):
-        """Main entry"""
         # Wait 2s for everything to initialize
         rospy.sleep(2.0)
     
@@ -143,7 +140,6 @@ class SquareControllerNode(DTROS):
         rospy.sleep(2.0)
 
     def on_shutdown(self):
-        """Cleanup when shutting down"""
         self.stop_robot()
         self.turn_off_leds()
         self.log(" LEDs turned off")
