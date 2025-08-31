@@ -1,6 +1,6 @@
 import time
 import numpy as np
-from perception import detect_lane_markings, detect_stop_line, detect_sign
+from perception import detect_lane_markings, detect_light, detect_stop_line, detect_sign
 from utils import get_steer_matrix_left_lane_markings, get_steer_matrix_right_lane_markings
 
 class LaneServoController:
@@ -13,6 +13,10 @@ class LaneServoController:
         self.k_white = 0.9
         self.turn_gain_to_wheels = 0.5
         self.base_speed = 0.30
+
+        # State variables for traffic light
+        self.traffic_light_state = "NORMAL"
+        self.traffic_start_time = 0
 
         # State variables for stop sign handling
         self.stop_sign_state = "NORMAL"  # NORMAL, STOPPING, CROSSING
@@ -44,6 +48,31 @@ class LaneServoController:
         right_wheel = speed + self.turn_gain_to_wheels * omega
         return np.array([np.clip(left_wheel, -1, 1),
                          np.clip(right_wheel, -1, 1)], dtype=np.float32)
+
+    def handle_traffic_light(self, obs, action):
+        """
+        Handle traffic light state machine
+        Returns modified action and new state
+        """
+        current_time = time.time()
+        light = detect_light(obs)
+        stop_line_detected = detect_stop_line(obs)
+
+        if self.traffic_light_state == "NORMAL":
+            if light == "RED" and stop_line_detected:
+                print("Traffic light is red - stopping until light is green")
+                self.traffic_light_state = "WAITING"
+                return np.array([0.0, 0.0]), self.traffic_light_state
+
+        elif self.traffic_light_state == "WAITING":
+            if light == "GREEN":
+                print("Green light - resumung")
+                self.traffic_light_state = "NORMAL"
+                return np.array([self.base_speed, self.base_speed]), self.traffic_light_state
+            else:
+                return np.array([0.0, 0.0]), self.traffic_light_state
+
+        return action, self.traffic_light_state
 
     def handle_stop_sign(self, obs, action):
         """

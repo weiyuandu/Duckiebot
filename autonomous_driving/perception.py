@@ -66,6 +66,34 @@ def detect_stop_line(image_rgb: np.ndarray) -> bool:
     # If more than 5% of bottom area is red, consider it a stop line
     return (red_pixels / total_pixels) > 0.05
 
+def detect_light(image):
+        h, w, _ = image.shape
+        roi = image[0:int(h/5), int(w/3):int(2*w/3)]
+        hsv = cv2.cvtColor(roi, cv2.COLOR_RGB2HSV)
+
+        lower_red1 = np.array([0, 120, 120])
+        upper_red1 = np.array([10, 255, 255])
+        lower_red2 = np.array([160, 120, 120])
+        upper_red2 = np.array([179, 255, 255])
+        lower_green = np.array([40, 120, 120])
+        upper_green = np.array([90, 255, 255])
+        red_mask = cv2.inRange(hsv, lower_red1, upper_red1) | cv2.inRange(hsv, lower_red2, upper_red2)
+        green_mask = cv2.inRange(hsv, lower_green, upper_green)
+        gray = cv2.cvtColor(roi, cv2.COLOR_RGB2GRAY)
+        circles = cv2.HoughCircles( gray, cv2.HOUGH_GRADIENT, dp=1.2, minDist=20, param1=50, param2=15, minRadius=5, maxRadius=30 )
+
+        if circles is not None:
+            circles = np.uint16(np.around(circles))
+            h_roi, w_roi = red_mask.shape
+            for (x, y, r) in circles[0, :]:
+                if 0 <= x < w_roi and 0 <= y < h_roi:
+                    if red_mask[y, x] > 0:
+                        return "RED"
+                    elif green_mask[y,x] > 0:
+                        return "GREEN"
+
+            return None
+
 def detect_sign(image):
     h, w, _ = image.shape
     hsv = cv2.cvtColor(image, cv2.COLOR_RGB2HSV)

@@ -16,7 +16,7 @@ from utils import make_debug_frame
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--map", default="loop_empty")
+    ap.add_argument("--map", default="udem1")
     ap.add_argument("--steps", type=int, default=200000)
     ap.add_argument("--no-gui", action="store_true")
     ap.add_argument("--debug", action="store_true", help="Show OpenCV debug overlay")
@@ -45,6 +45,9 @@ def main():
         while True:
             action = controller.compute_action(obs)
 
+            """Handle traffic light with state machine"""
+            action, light_state = controller.handle_traffic_light(obs, action)
+
             """Handle stop sign with state machine"""
             action, stop_state = controller.handle_stop_sign(obs, action)
 
@@ -66,6 +69,7 @@ def main():
             if done:
                 obs = env.reset()
                 # Reset state machines when episode resets
+                controller.traffic_light_state = "NORMAL"
                 controller.stop_sign_state = "NORMAL"
                 controller.slow_sign_state = "NORMAL"
             step += 1
