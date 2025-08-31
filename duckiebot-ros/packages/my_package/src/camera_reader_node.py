@@ -11,7 +11,7 @@ from cv_bridge import CvBridge
 
 class CameraReaderNode(DTROS):
 
-   def __init__(self, node_name):
+    def __init__(self, node_name):
        super(CameraReaderNode, self).__init__(
            node_name=node_name,
            node_type=NodeType.VISUALIZATION
@@ -23,44 +23,30 @@ class CameraReaderNode(DTROS):
        cv2.namedWindow(self._window, cv2.WINDOW_AUTOSIZE)
        self.sub = rospy.Subscriber(self._camera_topic, CompressedImage, self.callback)
        
-       # LED control setup
+       # add publisher for led
        led_topic = f"/{self._vehicle_name}/led_emitter_node/led_pattern"
        self._led_publisher = rospy.Publisher(
            led_topic,
            LEDPattern,
            queue_size=1
        )
-       
-       # LED intensity
        self._intensity = 1.0
-       
-       # Track the current LED color to avoid constant updates
        self._current_led_color = None
 
    def set_led_color(self, r, g, b, color_name):
-       """Set LED color using RGB values"""
-       try:
-           # Create LED pattern message
-           pattern = LEDPattern()
-           
-           # Set all 5 LEDs to the same color
-           for i in range(5):
-               led_color = ColorRGBA()
-               led_color.r = r
-               led_color.g = g
-               led_color.b = b
-               led_color.a = self._intensity
-               pattern.rgb_vals.append(led_color)
-           
-           # Publish the pattern
-           self._led_publisher.publish(pattern)
-           self.log(f"LED color set to {color_name}: RGB[{r}, {g}, {b}]")
-           
-       except Exception as e:
-           self.logwarn(f"Failed to publish LED pattern: {str(e)}")
+       pattern = LEDPattern()
+       for _ in range(5):
+           led_color = ColorRGBA()
+           led_color.r = r
+           led_color.g = g
+           led_color.b = b
+           led_color.a = self._intensity
+           pattern.rgb_vals.append(led_color)
+       
+       self._led_publisher.publish(pattern)
+       self.log(f"LED color set to {color_name}: RGB[{r}, {g}, {b}]")
 
    def turn_off_leds(self):
-       """Turn off all LEDs"""
        self.set_led_color(0.0, 0.0, 0.0, "OFF")
 
    def update_led_based_on_color(self, dominant_color):
@@ -85,19 +71,17 @@ class CameraReaderNode(DTROS):
 
        lower_green = (40, 70, 70)
        upper_green = (80, 255, 255)
-       # Blue
+
        lower_blue = (100, 150, 0)
        upper_blue = (140, 255, 255)
-       # Yellow
+
        lower_yellow = (20, 100, 100)
        upper_yellow = (30, 255, 255)
 
-       # Create masks
        mask_green = cv2.inRange(hsv, lower_green, upper_green)
        mask_blue = cv2.inRange(hsv, lower_blue, upper_blue)
        mask_yellow = cv2.inRange(hsv, lower_yellow, upper_yellow)
 
-       # Track color areas for LED control (Green, Blue, and Yellow)
        color_areas = {"Green": 0, "Blue": 0, "Yellow": 0}
 
        # Find contours and draw them
@@ -122,38 +106,29 @@ class CameraReaderNode(DTROS):
                            image, name, (cX-30, cY),
                            cv2.FONT_HERSHEY_SIMPLEX, 0.8, color, 2, cv2.LINE_AA
                        )
-           
-           # Track all three colors for LED control
            color_areas[name] = total_area
-
-       # Determine dominant color (Green, Blue, or Yellow) and update LEDs
+        #find the dorminate color
        dominant_color = None
        max_area = max(color_areas.values())
-       if max_area > 1000:  # Minimum area threshold for LED activation
+       if max_area > 1000:
            for color_name, area in color_areas.items():
                if area == max_area:
                    dominant_color = color_name
                    break
-
-       # Update LED color based on dominant detected color (Green, Blue, or Yellow)
        self.update_led_based_on_color(dominant_color)
 
        cv2.imshow(self._window, image)
 
    def on_shutdown(self):
-       """Cleanup when shutting down"""
        self.turn_off_leds()
        cv2.destroyAllWindows()
        self.log("Camera reader shutting down, LEDs turned off")
 
    def run(self):
-       """Main run loop with proper shutdown handling"""
        try:
-           # Use a rate loop instead of just rospy.spin() for better control
            rate = rospy.Rate(30)  # 30 Hz
            while not rospy.is_shutdown():
                rate.sleep()
-               # Check for 'q' key press to quit (if window is focused)
                key = cv2.waitKey(1) & 0xFF
                if key == ord('q'):
                    rospy.signal_shutdown("User pressed 'q' to quit")
@@ -166,10 +141,5 @@ class CameraReaderNode(DTROS):
 if __name__ == '__main__':
    node = CameraReaderNode(node_name='camera_reader_node')
    
-   # Register shutdown hook
    rospy.on_shutdown(node.on_shutdown)
-   
-   try:
-       node.run()
-   except rospy.ROSInterruptException:
-       pass
+   node.run()
