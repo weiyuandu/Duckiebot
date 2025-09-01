@@ -12,7 +12,7 @@ with a real Duckietown environment. This project provides hands-on experience wi
 computer vision and cyber-physical systems, building a foundation for more advanced
 autonomous vehicle research.
 
-## Setup
+## Setup For Duckietown GYM
 One-time setup:
 Windows OS should install WSL, install docker inside WSL   
 Run：
@@ -45,19 +45,19 @@ docker start -ai duckie
 
 Test your setup with python `manual_control.py`
 
-### Duckiebot-ros
+## Setup for Duckiebot-ros
 If you want to run the code from the `duckiebot-ros` module, you will need:  
 - A properly installed and calibrated Duckiebot **DB21J/M**  
 - A local environment with **Duckietown Shell** configured  
 
-For detailed instructions, please refer to the official Duckietown documentation.  
+For detailed instructions, please refer to the [official Duckietown documentation](https://docs.duckietown.com/daffy/opmanual-duckiebot/intro.html).  
 
 ---
 If the above conditions are met, you can proceed with the following steps:
 
 1. Clone this repository:
 ```bash
-git clone "<repository_url>"
+git clone "git@github.com:weiyuandu/Duckiebot.git"
 ```
 2.	Navigate into the duckiebot-ros folder:
 ```bash
@@ -76,6 +76,33 @@ Replace `<duckiebot_name>` with the name of your Duckiebot and `<node_name>` wit
 5.For more details on dts devel run usage, you can check the help manual by running:
 ```bahs
 dts devel run --help
+```
+
+## Project Structure
+```bash
+
+Duckiebot/
+├── README.md                          
+├── duckie-setup.md                    # Hardware setup guide for gym
+│
+├── autonomous_driving/                # Simulation & algorithms
+│   ├── main.py                      
+│   ├── perception.py                 # Lane detection & computer vision
+│   ├── controller.py                 # PID control logic
+│   └── utils.py                      # Helper functions
+│
+├── duckiebot-ros/                     
+│   ├── Dockerfile                    
+│   ├── launchers/                     # Startup scripts
+│   └── packages/my_package/src/       
+│       ├── camera_reader_node.py      # Vision & LED control
+│       ├── odometry_*.py              # Position estimation
+│       ├── square_controller_*.py     # Movement controllers
+│       └── wheel_*.py                 # Motor control
+│
+├── false light detection/             # Traffic light detection
+├── Reinforce learning/                # ML approaches
+└── assets/                          
 ```
 ## Overview of the functionalities of different modules
 
@@ -119,30 +146,32 @@ Primary function: An alternate approach using full PID-based control and turn-aw
 
 ## Duckiebot-ros
 
-### `duckiebot-ros/packages/my_package/src`
+This project is modified from the template of duckiebot ros-template. Further information can either be find in the [offical documentations](https://docs.duckietown.com/daffy/opmanual-duckiebot/intro.html) or the github page of [duckietown](https://github.com/duckietown).
+
+### TestNodes
 
 - `my_publisher_node.py` / `my_subscriber_node.py`: Demonstrates basic ROS communication with publisher and subscriber examples.  
 - `twist_control_node.py`: Controls robot motion using Twist velocity commands.  
 - `wheel_control_node.py`: Provides independent velocity control for the left and right wheels.  
 - `wheel_encoder_reader_node.py`: Reads and processes wheel encoder data for odometry input.  
 
-### `duckiebot-ros/packages/my_package/src/camera_reader_node.py`
+### `camera_reader_node.py`
 
 This node integrates computer vision and color recognition, receiving compressed images, converting them to HSV color space, detecting green/blue/yellow objects through thresholding, analyzing contours, dynamically controlling Duckiebot LEDs based on dominant colors, visualizing results in real time, and fully integrating with ROS topics and LED publishers.  
 
-### `duckiebot-ros/packages/my_package/src/square_controller_node.py`
+### `square_controller_node.py`
 
 This node implements basic open-loop square trajectory control, moving forward and turning left in sequence, using fixed time intervals for switching motion states, while displaying different LED colors (red, green, blue, white) at each corner without relying on sensor feedback.  
 
-### `duckiebot-ros/packages/my_package/src/square_controller_state_machine_node.py`
+### `square_controller_state_machine_node.py`
 
 This node introduces an advanced state machine with closed-loop feedback, defining movement states through enums, integrating wheel encoder data, applying PID controllers for precise position and orientation tracking, navigating predefined waypoints, correcting errors in real time, and outputting detailed logs to visualize motion progress.  
 
-### `duckiebot-ros/packages/my_package/src/odometry_activity.py`
+### `odometry_activity.py`
 
 This script implements the core odometry algorithm by processing wheel encoder displacements, applying differential-drive kinematics to estimate robot pose, providing position (x, y) and orientation updates, and exposing mathematical utilities for angle normalization and pose transformations.  
 
-### `duckiebot-ros/packages/my_package/src/odometry_node.py`
+### `odometry_node.py`
 
 This node wraps odometry into a ROS interface by subscribing to wheel encoder topics, continuously computing and publishing robot pose, loading calibration parameters (wheel radius, baseline) from the ROS parameter server, and maintaining pose consistency in the global coordinate frame.  
 
