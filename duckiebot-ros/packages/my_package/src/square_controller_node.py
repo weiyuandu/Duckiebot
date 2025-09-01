@@ -30,8 +30,8 @@ class SquareControllerNode(DTROS):
             LEDPattern,
             queue_size=1
         )
-        self._linear_velocity = 0.2   # m/s - good speed for real bot
-        self._angular_velocity = 2.0  # rad/s - good turning speed
+        self._linear_velocity = 0.3   # m/s - good speed for real bot
+        self._angular_velocity = 4.0  # rad/s - good turning speed
         self._edge_distance = 1.0     # meters
         
         self._move_time = self._edge_distance / self._linear_velocity  # time to move 1 meter
