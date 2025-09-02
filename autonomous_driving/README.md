@@ -1,72 +1,70 @@
-\### autonomous\_driving/main.py
+### autonomous_driving/main.py
 
 Primary Function: Main entry point and orchestration layer
 
 
 
-\- Initializes the Duckietown simulation environment with configurable parameters
+- Initializes the Duckietown simulation environment with configurable parameters
 
-\- Creates and manages the lane keeping controller instance
+- Creates and manages the lane keeping controller instance
 
-\- Handles the main simulation loop and step execution
+- Handles the main simulation loop and step execution
 
-\- Processes command-line arguments for runtime configuration
+- Processes command-line arguments for runtime configuration
 
-\- Manages environment reset and graceful shutdown
+- Manages environment reset and graceful shutdown
 
-\- Provides debug visualization when enabled
+- Provides debug visualization when enabled
 
-\- Coordinates between perception, control, and simulation components
+- Coordinates between perception, control, and simulation components
 
 
 
-\### autonomous\_driving/perception.py
+### autonomous_driving/perception.py
 
 Primary Function: Computer vision and environmental sensing
 
-\- Image Preprocessing: Convert image to HSV color space
+- Image Preprocessing: Convert image to HSV color space
 
-\- Lane Detection:  
+- Lane Detection:  
 
-Yellow Lane Detection: Use HSV thresholding with brightness-aware parameters for robust yellow line identification.   
+  - Yellow Lane Detection: Use HSV thresholding with brightness-aware parameters for robust yellow line identification.   
 
-White Lane Detection: Use HSV color space, restricted to right-side search area
+  - White Lane Detection: Use HSV color space, restricted to right-side search area
 
-\- Robustness Features: Includes hysteresis tracking for lane disappearance and adaptive thresholding for varying lighting conditions
+- Robustness Features: Includes hysteresis tracking for lane disappearance and adaptive thresholding for varying lighting conditions
 
 
 
-\### autonomous\_driving/controller.py
+### autonomous_driving/controller.py
 
 Primary Function: Decision making and control logic
 
-\- The lane marking masks are multiplied by a pre-set weighting matrix, giving a
+- The lane marking masks are multiplied by a pre-set weighting matrix, giving a value for each pixel in the masks
 
-value for each pixel in the masks
+- The weighted results are converted into a steering vector and passed to the wheels.
 
-\- The weighted results are converted into a steering vector and passed to the wheels.
-
-\- Essentially, this is a variation of the ”P” portion of PID Control
+- Essentially, this is a variation of the ”P” portion of PID Control
 
 
 
-\### autonomous\_driving/utils.py
+### autonomous_driving/utils.py
 
 Primary Function: Utility functions and helper operations  
 
-\- Visualization Tools: Creates debug overlay displays showing lane detection results and mask visualizations
+- Visualization Tools: Creates debug overlay displays showing lane detection results and mask visualizations
 
-\- Geometry Utilities:  
+- Geometry Utilities:  
 
-Estimates lane center from single detected line using exponential moving average of lane width  
+  - Estimates lane center from single detected line using exponential moving average of lane width  
 
-Updates lane width estimation with smoothing
+  - Updates lane width estimation with smoothing
 
-\- Conversion Functions: Handles coordinate system transformations and normalization
+- Conversion Functions: Handles coordinate system transformations and normalization
 
 
 
-\### autonomous\_driving/pid\_control\_standalone.py
+### autonomous_driving/pid_control_standalone.py
 
 Primary function: An alternate approach using full PID-based control and turn-awareness modifications. It is a standalone executable, and can be run via `python pid\_control\_standalone.py --env-name <map name>` 
 
