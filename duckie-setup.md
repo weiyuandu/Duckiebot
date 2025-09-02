@@ -14,5 +14,5 @@ From now on, start the simulator with：docker start -ai duckie
 
 Test your setup in the container with python manual\_control.py
 
-Exit simulator：Ctrl+C
+Exit simulator：exit
 
