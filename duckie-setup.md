@@ -12,7 +12,7 @@ One-time setup:
 
 From now on, start the simulator with：docker start -ai duckie  
 
-Run in container: <your script> or test your setup with python manual\_control.py
+Test your setup in the container with python manual\_control.py
 
 Exit simulator：Ctrl+C
 
