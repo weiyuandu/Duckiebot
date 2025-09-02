@@ -39,7 +39,7 @@ Explation：
 - `--show-topdown` Open the top view window (without this parameter, only the vehicle camera perspective is displayed)。
 - If you only want to use the randomization function (without running the controller), you can also call `randomize_obstacles_in_yaml()` before starting to generate several "standard test maps"。
 
-### 2) 启动强化学习训练
+### 2) start reinforce learning training
 
 ```bash
 python train_ppo.py
@@ -100,6 +100,7 @@ python train_ppo.py
   - `VecMonitor` record `episode_return`/`length`；
   - `EvalCallback` Fix the evaluation environment and save the best model;
   - A fixed random seed is used to generate a standard test set to facilitate comparison and reproduction of different algorithms/rounds.
+(Later we trained 50,000 times per round, with a learning rate of 0.0003 for the first round and 0.0001 for the second round.)
 ---
 
 ## Dependency and Environment
