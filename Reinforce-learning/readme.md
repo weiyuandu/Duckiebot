@@ -16,6 +16,7 @@ This project aims to construct diverse training/testing scenarios in the Duckiet
 ├── lane_keeping_1.py          # Obstacle Randomization Tool + Vision-PID Lane Keeping Baseline (can be run separately)
 ├── duckie_avoid_env.py        # RL Environment Wrapper: DuckieAvoidWrapper (Randomization + Rewards)
 └── train_ppo.py               # Training script: PPO (CnnPolicy) trained on DuckieAvoidWrapper
+└── train_ppo(1).py            # The second training script，Compared with the first one, the detection of the reward function result is added, and the relevant parameter change image is drawn.
 ```
 
 ---
