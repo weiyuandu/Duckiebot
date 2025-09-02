@@ -152,7 +152,7 @@ class SquareControllerStateMachineNode(DTROS):
 
         self.x_prev = 0.0
         self.y_prev = 0.0
-        self.theta_prev = 0.0  # Start facing right (0 degrees)
+        self.theta_prev = 0.0 
 
         self.x_curr = 0.0
         self.y_curr = 0.0
@@ -426,7 +426,6 @@ class SquareControllerStateMachineNode(DTROS):
                 if not continue_execution:
                     break
             else:
-                # Still waiting for encoder initialization
                 self.log("Waiting for encoder initialization...")
                 rospy.sleep(0.5)
                 

@@ -5,26 +5,16 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 def parse_log_positions(log_text):
-    """
-    从日志中提取位置信息
-    """
     positions = []
     
-    # 匹配位置信息的正则表达式
     patterns = [
-        # 匹配 "Current pose: x=..., y=..., θ=...°"
         r'Current pose: x=([-\d.]+), y=([-\d.]+), θ=([-\d.]+)°',
-        # 匹配 "Progress: pos=(...), θ=...°"
         r'Progress: pos=\(([-\d.]+), ([-\d.]+)\), θ=([-\d.]+)°',
-        # 匹配 "Initial position: x=..., y=..., θ=...°"
         r'Initial position: x=([-\d.]+), y=([-\d.]+), θ=([-\d.]+)°',
-        # 匹配 "Final position: x=..., y=..., θ=...°"
         r'Final position: x=([-\d.]+), y=([-\d.]+), θ=([-\d.]+)°',
-        # 匹配 "Final odometry: x=..., y=..., θ=...°"
         r'Final odometry: x=([-\d.]+), y=([-\d.]+), θ=([-\d.]+)°'
     ]
     
-    # 按时间戳排序提取位置
     lines = log_text.strip().split('\n')
     
     for line in lines:
@@ -35,7 +25,6 @@ def parse_log_positions(log_text):
                 y = float(match.group(2))
                 theta = float(match.group(3))
                 
-                # 提取时间戳用于排序
                 timestamp_match = re.search(r'\[(\d+\.\d+)\]', line)
                 timestamp = float(timestamp_match.group(1)) if timestamp_match else 0
                 
@@ -48,42 +37,39 @@ def parse_log_positions(log_text):
                 })
                 break
     
-    # 按时间戳排序
     positions.sort(key=lambda p: p['timestamp'])
     
     return positions
 
 def plot_trajectory(positions):
-    """
-    绘制轨迹图
-    """
+
     if not positions:
         print("No positions found in the log!")
         return
     
-    # 提取坐标数据
+
     x_coords = [p['x'] for p in positions]
     y_coords = [p['y'] for p in positions]
     timestamps = [p['timestamp'] for p in positions]
     
-    # 创建图形
+
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
     
-    # 轨迹图
+
     ax1.plot(x_coords, y_coords, 'b-', linewidth=2, label='Robot Trajectory')
     ax1.scatter(x_coords, y_coords, c=range(len(x_coords)), cmap='viridis', s=50, alpha=0.7)
     
-    # 标记起点和终点
+
     ax1.scatter(x_coords[0], y_coords[0], c='green', s=100, marker='o', label=f'Start ({x_coords[0]:.3f}, {y_coords[0]:.3f})')
     ax1.scatter(x_coords[-1], y_coords[-1], c='red', s=100, marker='s', label=f'End ({x_coords[-1]:.3f}, {y_coords[-1]:.3f})')
     
-    # 标记目标正方形的角点
+
     target_corners = [(0, 0), (1, 0), (1, 1), (0, 1)]
     for i, (tx, ty) in enumerate(target_corners):
         ax1.scatter(tx, ty, c='orange', s=80, marker='^', alpha=0.8)
         ax1.annotate(f'Target {i+1}', (tx, ty), xytext=(5, 5), textcoords='offset points', fontsize=8)
     
-    # 绘制理想正方形路径
+
     ideal_x = [0, 1, 1, 0, 0]
     ideal_y = [0, 0, 1, 1, 0]
     ax1.plot(ideal_x, ideal_y, 'r--', alpha=0.5, linewidth=1, label='Ideal Square Path')
@@ -95,7 +81,7 @@ def plot_trajectory(positions):
     ax1.legend()
     ax1.axis('equal')
     
-    # 添加一些统计信息
+
     total_distance = sum(np.sqrt((x_coords[i+1] - x_coords[i])**2 + (y_coords[i+1] - y_coords[i])**2) 
                         for i in range(len(x_coords)-1))
     
@@ -103,7 +89,7 @@ def plot_trajectory(positions):
              transform=ax1.transAxes, verticalalignment='top', 
              bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.8))
     
-    # 位置随时间变化图
+
     relative_time = [(t - timestamps[0]) for t in timestamps]
     
     ax2.plot(relative_time, x_coords, 'r-', label='X Position', linewidth=2)
@@ -117,7 +103,6 @@ def plot_trajectory(positions):
     plt.tight_layout()
     plt.show()
     
-    # 打印统计信息
     print(f"\n=== Trajectory Analysis ===")
     print(f"Total waypoints: {len(positions)}")
     print(f"Start position: ({x_coords[0]:.3f}, {y_coords[0]:.3f})")
@@ -125,11 +110,11 @@ def plot_trajectory(positions):
     print(f"Estimated total distance: {total_distance:.3f} m")
     print(f"Duration: {relative_time[-1]:.1f} seconds")
     
-    # 计算与目标点的误差
+
     print(f"\n=== Target Point Errors ===")
     targets = [(1.0, 0.0), (1.0, 1.0), (0.0, 1.0), (0.0, 0.0)]
     
-    # 找到最接近每个目标点的实际位置
+
     for i, (tx, ty) in enumerate(targets):
         min_dist = float('inf')
         closest_point = None
@@ -141,7 +126,6 @@ def plot_trajectory(positions):
         print(f"Target {i+1} ({tx}, {ty}): closest actual ({closest_point['x']:.3f}, {closest_point['y']:.3f}), error: {min_dist:.3f} m")
 
 def main():
-    # 这里是您提供的日志内容
     log_content = """
 [INFO] [1756726491.490653]: [/square_controller_state_machine_node] Initializing...
 [INFO] [1756726492.241529]: [/square_controller_state_machine_node] Health status changed [STARTING] -> [STARTED]

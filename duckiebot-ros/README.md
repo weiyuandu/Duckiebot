@@ -1,47 +1,30 @@
-# Template: template-ros
+## Duckiebot-ros
 
-This template provides a boilerplate repository
-for developing ROS-based software in Duckietown.
+This project is modified from the template of duckiebot ros-template. Further information can either be find in the [offical documentations](https://docs.duckietown.com/daffy/opmanual-duckiebot/intro.html) or the github page of [duckietown](https://github.com/duckietown).
 
-**NOTE:** If you want to develop software that does not use
-ROS, check out [this template](https://github.com/duckietown/template-basic).
+### TestNodes
 
+- `my_publisher_node.py` / `my_subscriber_node.py`: Demonstrates basic ROS communication with publisher and subscriber examples.  
+- `twist_control_node.py`: Controls robot motion using Twist velocity commands.  
+- `wheel_control_node.py`: Provides independent velocity control for the left and right wheels.  
+- `wheel_encoder_reader_node.py`: Reads and processes wheel encoder data for odometry input.  
 
-## How to use it
+### `camera_reader_node.py`
 
-### 1. Fork this repository
+This node integrates computer vision and color recognition, receiving compressed images, converting them to HSV color space, detecting green/blue/yellow objects through thresholding, analyzing contours, dynamically controlling Duckiebot LEDs based on dominant colors, visualizing results in real time, and fully integrating with ROS topics and LED publishers.  
 
-Use the fork button in the top-right corner of the github page to fork this template repository.
+### `square_controller_node.py`
 
+This node implements basic open-loop square trajectory control, moving forward and turning left in sequence, using fixed time intervals for switching motion states, while displaying different LED colors (red, green, blue, white) at each corner without relying on sensor feedback.  
 
-### 2. Create a new repository
+### `square_controller_state_machine_node.py`
 
-Create a new repository on github.com while
-specifying the newly forked template repository as
-a template for your new repository.
+This node introduces an advanced state machine with closed-loop feedback, defining movement states through enums, integrating wheel encoder data, applying PID controllers for precise position and orientation tracking, navigating predefined waypoints, correcting errors in real time, and outputting detailed logs to visualize motion progress.  
 
+### `odometry_activity.py`
 
-### 3. Define dependencies
+This script implements the core odometry algorithm by processing wheel encoder displacements, applying differential-drive kinematics to estimate robot pose, providing position (x, y) and orientation updates, and exposing mathematical utilities for angle normalization and pose transformations.  
 
-List the dependencies in the files `dependencies-apt.txt` and
-`dependencies-py3.txt` (apt packages and pip packages respectively).
+### `odometry_node.py`
 
-
-### 4. Place your code
-
-Place your code in the directory `/packages/` of
-your new repository.
-
-
-### 5. Setup launchers
-
-The directory `/launchers` can contain as many launchers (launching scripts)
-as you want. A default launcher called `default.sh` must always be present.
-
-If you create an executable script (i.e., a file with a valid shebang statement)
-a launcher will be created for it. For example, the script file 
-`/launchers/my-launcher.sh` will be available inside the Docker image as the binary
-`dt-launcher-my-launcher`.
-
-When launching a new container, you can simply provide `dt-launcher-my-launcher` as
-command.
+This node wraps odometry into a ROS interface by subscribing to wheel encoder topics, continuously computing and publishing robot pose, loading calibration parameters (wheel radius, baseline) from the ROS parameter server, and maintaining pose consistency in the global coordinate frame.  
