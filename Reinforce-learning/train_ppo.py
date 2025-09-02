@@ -5,7 +5,7 @@ import gym
 from gym import spaces
 
 from gym_duckietown.envs import DuckietownEnv
-# 复用 lane_keeping_1.py 里的随机障碍函数
+# Reuse the random obstacle function in lane_keeping_1.py
 from lane_keeping_1 import randomize_obstacles_in_yaml, _find_maps_dir
 
 
@@ -65,10 +65,10 @@ class DuckieAvoidWrapper(gym.Env):
         progress = self._progress(self.env.cur_pos)
         self.prev_pos = self.env.cur_pos.copy()
 
-        # 自定义奖励
+        # Custom Rewards
         r = 0.0
         r += +1.0 * progress
-        r += -0.05 * abs(steer - self.last_steer)  # 平滑性
+        r += -0.05 * abs(steer - self.last_steer)  # smooth
         self.last_steer = steer
         if info.get("collision", False):
             r += -1.0
