@@ -20,25 +20,24 @@ This project aims to construct diverse training/testing scenarios in the Duckiet
 
 ---
 
-## 快速开始
+## How to start
 
-### 1) 运行车道保持基线（可视化）
-
-- **俯视图 + 正常视角（同时）**
+### 1) Running Lane Keeping Baseline (Visualization)
+- **Top view + normal view (simultaneously)**
 ```bash
 python lane_keeping_1.py --env-name loop_obstacles --randomize-obstacles --show-topdown
 ```
 
-- **仅正常视角**
+- **Normal view only**
 ```bash
 python lane_keeping_1.py --env-name loop_obstacles --randomize-obstacles
 ```
 
-说明：
-- `--env-name loop_obstacles` 选择带障碍的地图。
-- `--randomize-obstacles` 在创建环境前与每次 episode 结束后，对 YAML 中的障碍进行**随机化**（在可行驶路面上采样、控制物体最小间距等）。
-- `--show-topdown` 打开俯视图窗口（没有该参数则只显示车载相机视角）。
-- 如果你希望只使用随机化功能（不跑控制器），也可以在启动前单独调用 `randomize_obstacles_in_yaml()` 生成若干张“标准测试地图”。
+Explation：
+- `--env-name loop_obstacles` Select a map with barriers.
+- `--randomize-obstacles` Before creating the environment and after each episode, randomize the obstacles in the YAML (sampling on drivable roads, controlling minimum distance between objects, etc.).
+- `--show-topdown` Open the top view window (without this parameter, only the vehicle camera perspective is displayed)。
+- If you only want to use the randomization function (without running the controller), you can also call `randomize_obstacles_in_yaml()` before starting to generate several "standard test maps"。
 
 ### 2) 启动强化学习训练
 
@@ -46,74 +45,72 @@ python lane_keeping_1.py --env-name loop_obstacles --randomize-obstacles
 python train_ppo.py
 ```
 
-- 脚本中会：
-  - 使用 `DuckieAvoidWrapper` 包装 Duckietown 环境（图像观测为 84×84×3，连续动作为 `[speed, steer]`）。
-  - 在 `reset()` 时调用 `randomize_obstacles_in_yaml()` 随机化障碍布局。
-  - 用 `PPO("CnnPolicy", ...)` 进行训练，并在训练结束后保存模型（例如 `ppo_duckie_avoid.zip`）。
+- in the script：
+  - Use `DuckieAvoidWrapper` to wrap the Duckietown environment (image observation is 84×84×3, continuous action is `[speed, steer]`).
+  - Call `randomize_obstacles_in_yaml()` to randomize the obstacle layout when `reset()`.
+  - Use `PPO("CnnPolicy", ...)` to train and save the model after training (e.g. `ppo_duckie_avoid.zip`).
 
 ---
 
-## 关键模块说明
+## Key module description
 
-### A. `lane_keeping_1.py` 功能模块
+### A. `lane_keeping_1.py` function moduel
 
-1. **障碍随机化工具**
+1. **Hurdle Randomization Tool**
    - `randomize_obstacles_in_yaml(map_yaml_path, kinds, min_dist, include_static, margin, seed)`：
-     - 读取地图 YAML，枚举 `objects` 中指定 `kinds`（如 `duckie`、`cone`、`barrier`）的物体；
-     - 仅在**可行驶的 road tiles** 上均匀随机采样落点；
-     - 强制物体间**最小间距 min_dist**，保留一定 **margin** 远离 tile 边；
-     - 成功后**原地写回 YAML**，方便后续创建环境直接加载新布局。
-2. **视觉感知（黄/白线检测）**
+     - Read the map YAML and enumerate the objects of the specified `kinds` (such as `duckie`, `cone`, `barrier`) in `objects`;
+     - Only randomly sample landing points on drivable road tiles;
+     - Enforce a minimum distance min_dist between objects, keeping a certain margin away from tile edges;
+     - After success, **write back to YAML** in place, so that the new layout can be loaded directly in the subsequent environment creation.
+2. **Visual perception (yellow/white line detection)**
    
 
-3. **转弯感知与丢线恢复**
+3. **Turning perception and line loss recovery**
    
 
-4. **PID 控制与平滑**
+4. **PID control and smoothing**
    
-
+(same as the part of pid lane_keeping)
 ---
 
-### B. `duckie_avoid_env.py` 的奖励函数机制
+### B. `duckie_avoid_env.py` Reward function mechanism
 
-`DuckieAvoidWrapper.step()` 返回的奖励 `r` 由三部分组成：
+`DuckieAvoidWrapper.step()` The returned reward `r` consists of three parts:
 
-1. **前进进度奖励**：`+1.0 * progress`  
-   - `progress` 为相邻两帧小车位置（xy）欧氏距离；鼓励**持续前进**，避免原地抖动。
+1. **Progress Rewards**：`+1.0 * progress`  
+   - `progress` The Euclidean distance between the car's positions (xy) in two adjacent frames; it encourages continuous movement to avoid jittering.
 
-2. **平滑性惩罚**：`-0.05 * |steer - last_steer|`  
-   - 惩罚舵角的大幅跳变，鼓励**动作平滑**。
+2. **Smoothness penalty**：`-0.05 * |steer - last_steer|`  
+   - Punish large jumps in rudder angle and encourage smooth movements.
 
-3. **碰撞惩罚 + 终止**：若 `info["collision"] == True`，则 `-1.0` 并 `done=True`  
-   - 强烈惩罚碰撞并提前结束该 episode，引导智能体**主动规避障碍**。
+3. **Collision Penalty + Termination**：If `info["collision"] == True`, then `-1.0` and `done=True`
+   - Strongly penalize collisions and end the episode early, guiding the agent to actively avoid obstacles.
 
-**其它要点**：
-- 观测为相机图像下采样到 **(84, 84, 3)**，`dtype=uint8`；
-- 动作为连续空间 `[speed, steer]`（训练时传给环境会对 steer 取反以匹配 Duckietown 的约定）；
-- `frame_skip=2`：一次 `step()` 内重复动作 2 帧，稳定训练并加速推进。
-
+**Other points**：
+- The observation is the camera image downsampled to **(84, 84, 3)**，`dtype=uint8`；
+- Action is continuous space `[speed, steer]`（When passing it to the environment during training, the steer is negated to match the convention of Duckietown）；
+- `frame_skip=2`：Repeat the action for 2 frames in one `step()` to stabilize training and accelerate progress.
 ---
 
-## 训练脚本说明（`train_ppo.py`）
+## Training script description（`train_ppo.py`）
 
-- 使用 `DummyVecEnv([make_env])` 创建向量化环境（后续可扩展为多进程以加速采样）；
-- 策略为 `CnnPolicy`（适合图像输入）；常用超参例如：`learning_rate=3e-4`、`n_steps=1024`、`batch_size=256`、`gamma=0.99`、`gae_lambda=0.95`；
-- 初期可先用 `total_timesteps=20_000` 验证训练管道；上规模训练建议加入：
-  - `VecMonitor` 记录 `episode_return`/`length`；
-  - `EvalCallback` 固定评测环境并保存最佳模型；
-  - 固定随机种子生成**标准测试集**，便于不同算法/轮次对比复现。
-
+- Use `DummyVecEnv([make_env])` to create a vectorized environment (which can be expanded to multiple processes to speed up sampling later);
+- The policy is `CnnPolicy` (suitable for image input); common hyperparameters include: `learning_rate=3e-4`, `n_steps=1024`, `batch_size=256`, `gamma=0.99`, `gae_lambda=0.95`;
+- Initially, you can use `total_timesteps=20_000` to verify the training pipeline; for large-scale training, it is recommended to add:
+  - `VecMonitor` record `episode_return`/`length`；
+  - `EvalCallback` Fix the evaluation environment and save the best model;
+  - A fixed random seed is used to generate a standard test set to facilitate comparison and reproduction of different algorithms/rounds.
 ---
 
-## 依赖与环境
+## Dependency and Environment
 
 - Python 3.8+
 - `gym-duckietown`, `stable-baselines3`, `opencv-python`, `numpy`, `pyyaml`
-- 安装环境指令
+- Installation environment instructions
 ```bash
 pip install stable-baselines3==1.8.0
 ```
-- 确保可访问到 `loop_obstacles（1）.yaml` （这个地图就是Ray在群里提供地图的无障碍物版本）
+- Make sure you have access to `loop_obstacles(1).yaml` (this map is the obstacle-free version of the map Ray provided in the group)
 ---
 
 
