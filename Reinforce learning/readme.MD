@@ -1,22 +1,21 @@
 # Duckie Avoid: Randomized-Obstacle RL Training on Duckietown
 
-本项目旨在在 **Duckietown** 模拟环境中，通过**随机化地图中的障碍物**来构造多样化的训练/测试场景，并使用 **PPO** 训练一个“避障”策略。工程由三部分组成：
+This project aims to construct diverse training/testing scenarios in the Duckietown simulation environment by randomizing obstacles in the map and training an obstacle avoidance policy using PPO. The project consists of three parts:
 
-1. **`lane_keeping_1.py`**：提供 *YAML 地图障碍随机化* 的工具函数，并内置一个**视觉+PID 的车道保持基线控制器（带转弯感知与丢线恢复）**。
-2. **`duckie_avoid_env.py`**：自定义 **Gym** 环境包装器 `DuckieAvoidWrapper`，将 Duckietown 打包为图像观测+连续动作的 RL 环境，并在 `reset()` 时随机化障碍；在 `step()` 中给出**避障导向的奖励函数**。
-3. **`train_ppo.py`**：使用 **Stable-Baselines3** 的 PPO（`CnnPolicy`）在 `DuckieAvoidWrapper` 上启动训练。
+1. **`lane_keeping_1.py`**：Provides utility functions for *YAML map obstacle randomization* and a built-in **vision+PID lane keeping baseline controller (with turn awareness and lane loss recovery)**.
+2. **`duckie_avoid_env.py`**：Customize the **Gym** environment wrapper `DuckieAvoidWrapper` to package Duckietown into an RL environment with image observations and continuous actions, randomize obstacles during `reset()`, and provide an **obstacle avoidance-guided reward function** in `step()`.
+3. **`train_ppo.py`**：Start training on `DuckieAvoidWrapper` using **Stable-Baselines3**'s PPO (`CnnPolicy`).
 
-> 目标：**随机生成障碍物 → 用奖励函数让智能体学会“向前走、尽量不撞、转向更平滑” → 启动 PPO 训练并保存模型。**
-
+> Goal: **Randomly generate obstacles → Use reward function to let the agent learn to "move forward, try not to collide, and turn more smoothly" → Start PPO training and save the model. **
 ---
 
-## 目录结构
+## Document Structure
 
 ```
 .
-├── lane_keeping_1.py          # 障碍随机化工具 + 视觉-PID 车道保持基线（可单独运行）
-├── duckie_avoid_env.py        # RL 环境包装器：DuckieAvoidWrapper（随机化 + 奖励）
-└── train_ppo.py               # 训练脚本：PPO(CnnPolicy) 在 DuckieAvoidWrapper 上训练
+├── lane_keeping_1.py          # Obstacle Randomization Tool + Vision-PID Lane Keeping Baseline (can be run separately)
+├── duckie_avoid_env.py        # RL Environment Wrapper: DuckieAvoidWrapper (Randomization + Rewards)
+└── train_ppo.py               # Training script: PPO (CnnPolicy) trained on DuckieAvoidWrapper
 ```
 
 ---
@@ -64,7 +63,6 @@ python train_ppo.py
      - 仅在**可行驶的 road tiles** 上均匀随机采样落点；
      - 强制物体间**最小间距 min_dist**，保留一定 **margin** 远离 tile 边；
      - 成功后**原地写回 YAML**，方便后续创建环境直接加载新布局。
-     （后面都是ray和franzi之前文件中就已经完成的功能，我就写个标题）
 2. **视觉感知（黄/白线检测）**
    
 
