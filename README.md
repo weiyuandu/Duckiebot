@@ -121,11 +121,12 @@ Primary Function: Utility functions and helper operations
 ### autonomous_driving/pid_control_standalone.py
 Primary function: An alternate approach using full PID-based control and turn-awareness modifications.
 
+## Project Materials
 
-Presentation link:
+Presentation link:    https://github.com/weiyuandu/Duckiebot/blob/main/Presentation.pdf
 
-Demo link:
+Demo link:    https://github.com/weiyuandu/Duckiebot/blob/main/Project%20Video%20Demo.mp4
 
-Report link:  https://www.notion.so/CPS-Duckietown-Report-250192af408780bf9519c62ca5486e08?source=copy_link
+Report link:  https://github.com/weiyuandu/Duckiebot/blob/main/CPS_Group_V_Report.pdf
 
 
