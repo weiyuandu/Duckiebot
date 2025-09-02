@@ -1,5 +1,11 @@
-# train_duckie_with_logging.py
+# train_ppo.py
+# PPO(CnnPolicy) on DuckieAvoidWrapper with logging, eval, and plots.
+# Usage:
+#   python train_ppo.py --timesteps 200000 --map loop_obstacles
+#   tensorboard --logdir logs     (optional)
+
 import os
+import argparse
 from datetime import datetime
 
 import numpy as np
@@ -14,10 +20,11 @@ from stable_baselines3.common.logger import configure
 from duckie_avoid_env import DuckieAvoidWrapper
 
 
-# ---------- 1) 环境工厂 ----------
-def make_train_env():
+# -------------------- Environment factories --------------------
+def make_train_env(map_name: str):
+    # 训练环境：带随机化，提升鲁棒性
     return DuckieAvoidWrapper(
-        map_name="loop_obstacles",
+        map_name=map_name,
         obs_size=(84, 84),
         frame_skip=2,
         randomize=True,
@@ -25,127 +32,149 @@ def make_train_env():
                          min_dist=0.6, include_static=False, margin=0.2)
     )
 
-def make_eval_env():
-    # 评估用：建议相对稳定（可将 randomize=False）
+def make_eval_env(map_name: str):
+    # 评估环境：固定，不随机化，便于趋势与不同run对比
     return DuckieAvoidWrapper(
-        map_name="loop_obstacles",
+        map_name=map_name,
         obs_size=(84, 84),
         frame_skip=2,
-        randomize=False,   # 固定评估场景，更好对比趋势
+        randomize=False
     )
 
 
-# ---------- 2) 日志与目录 ----------
-run_tag = datetime.now().strftime("%Y%m%d_%H%M%S")
-log_dir = os.path.join("logs", f"duckie_{run_tag}")
-os.makedirs(log_dir, exist_ok=True)
-
-monitor_csv_path = os.path.join(log_dir, "monitor.csv")
-best_model_dir = os.path.join(log_dir, "best_model")
-os.makedirs(best_model_dir, exist_ok=True)
-
-
-# ---------- 3) 启动训练环境并挂载 VecMonitor ----------
-train_env = DummyVecEnv([make_train_env])
-# 把每个 episode 的奖励/长度写进 CSV
-train_env = VecMonitor(train_env, filename=monitor_csv_path)
-
-# 评估环境也挂上 VecMonitor（不写文件也行）
-eval_env = DummyVecEnv([make_eval_env])
-eval_env = VecMonitor(eval_env)
-
-
-# ---------- 4) 定义模型（含 TensorBoard 日志） ----------
-model = PPO(
-    "CnnPolicy",
-    train_env,
-    learning_rate=3e-4,
-    n_steps=1024,
-    batch_size=256,
-    gamma=0.99,
-    gae_lambda=0.95,
-    verbose=1,
-    tensorboard_log=log_dir,   # 也可用TensorBoard查看
-)
-
-# 让 SB3 也把标量写入 CSV（可选）
-new_logger = configure(folder=log_dir, format_strings=["stdout", "csv", "tensorboard"])
-model.set_logger(new_logger)
-
-
-# ---------- 5) 评估回调（周期性评估 + 保存最佳模型） ----------
-eval_callback = EvalCallback(
-    eval_env,
-    best_model_save_path=best_model_dir,
-    log_path=log_dir,            # 这里会生成 evaluations.npz
-    eval_freq=1000,              # 每 5k timesteps 评估一次
-    n_eval_episodes=10,
-    deterministic=True,
-    render=False
-)
-
-
-# ---------- 6) 开始训练 ----------
-total_timesteps = 20000  # 你原来的 2 万步
-model.learn(total_timesteps=total_timesteps, callback=eval_callback)
-
-# 保存最后模型快照
-final_model_path = os.path.join(log_dir, "final_model.zip")
-model.save(final_model_path)
-
-
-# ---------- 7) 读取训练日志并画图 ----------
+# -------------------- Plot helper --------------------
 def plot_training_curves(monitor_path: str, eval_npz_path: str, out_png: str):
-    # (A) 训练集：monitor.csv
-    # monitor.csv 的格式：header 行以 "#" 开头。常见列：r(episode reward), l(episode length), t(时间点), t_start
-    df = pd.read_csv(monitor_path, comment="#")
-    # 累计 timesteps（把每个 episode 的长度累加即可）
-    df["timesteps"] = df["l"].cumsum()
+    # monitor.csv：由 VecMonitor 写入，行首 # 为注释
+    if not os.path.exists(monitor_path):
+        print(f"[WARN] monitor.csv not found: {monitor_path}")
+        return
 
-    # 计算滑动平均，窗口可按需调整
-    window = max(1, len(df)//50)  # 大概分 50 段平滑
+    df = pd.read_csv(monitor_path, comment="#")
+    if "l" not in df.columns or "r" not in df.columns:
+        print("[WARN] monitor.csv missing columns 'l' or 'r'")
+        return
+
+    # 累计 timesteps（每个 episode 的长度累加）
+    df["timesteps"] = df["l"].cumsum()
+    # 自适应滑动平均窗口（约分成 50 段）
+    window = max(1, len(df) // 50)
     df["reward_ma"] = df["r"].rolling(window=window, min_periods=1).mean()
 
-    # (B) 评估集：evaluations.npz
-    eval_timesteps = None
-    eval_means = None
-    eval_stds = None
+    # 周期评估（由 EvalCallback 写入）
+    eval_timesteps = eval_means = eval_stds = None
     if os.path.exists(eval_npz_path):
-        data = np.load(eval_npz_path, allow_pickle=True)
-        # keys: ["timesteps", "results", "ep_lengths"]
-        eval_timesteps = data["timesteps"]                # shape [K]
-        eval_results = data["results"]                    # shape [K, n_eval_episodes]
-        eval_means = eval_results.mean(axis=1)            # shape [K]
-        eval_stds = eval_results.std(axis=1)              # shape [K]
+        try:
+            data = np.load(eval_npz_path, allow_pickle=True)
+            eval_timesteps = data["timesteps"]
+            eval_results = data["results"]  # shape [K, n_eval_episodes]
+            eval_means = eval_results.mean(axis=1)
+            eval_stds  = eval_results.std(axis=1)
+        except Exception as e:
+            print(f"[WARN] Failed to load evaluations.npz: {e}")
 
-    # (C) 画图
     plt.figure(figsize=(9, 6))
-    # 训练曲线（episode reward 与滑动平均）
+    # 训练集：每个 episode 的总奖励 + 滑动平均
     plt.plot(df["timesteps"], df["r"], alpha=0.3, label="Episode reward (train)")
-    plt.plot(df["timesteps"], df["reward_ma"], linewidth=2, label=f"Moving avg (window={window})")
+    plt.plot(df["timesteps"], df["reward_ma"], linewidth=2,
+             label=f"Moving avg (window={window})")
 
-    # 评估曲线（均值 ± 标准差）
+    # 评估集：均值 ± std
     if eval_timesteps is not None:
         plt.plot(eval_timesteps, eval_means, linewidth=2, label="Eval mean reward")
-        plt.fill_between(eval_timesteps, eval_means - eval_stds, eval_means + eval_stds, alpha=0.2, label="Eval ±1 std")
+        plt.fill_between(eval_timesteps, eval_means - eval_stds, eval_means + eval_stds,
+                         alpha=0.2, label="Eval ±1 std")
 
     plt.xlabel("Timesteps")
     plt.ylabel("Reward")
     plt.title("DuckieTown PPO Training Curve")
-    plt.legend()
     plt.grid(True, alpha=0.25)
+    plt.legend()
     plt.tight_layout()
+    os.makedirs(os.path.dirname(out_png), exist_ok=True)
     plt.savefig(out_png, dpi=150)
     print(f"[Saved] {out_png}")
 
-# evaluations.npz 默认由 EvalCallback 写在 log_dir 里
-eval_npz_path = os.path.join(log_dir, "evaluations.npz")
-out_png = os.path.join(log_dir, "training_curves.png")
-plot_training_curves(monitor_csv_path, eval_npz_path, out_png)
 
-print(f"\nArtifacts:")
-print(f"- Monitor CSV: {monitor_csv_path}")
-print(f"- Eval npz    : {eval_npz_path} (如果开启了 EvalCallback 才会生成)")
-print(f"- Curves PNG  : {out_png}")
-print(f"- Final model : {final_model_path}")
-print(f"- Best model  : {os.path.join(best_model_dir, 'best_model.zip')}  (评估最优)\n")
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--map", type=str, default="loop_obstacles", help="Duckietown map name")
+    ap.add_argument("--timesteps", type=int, default=50_000, help="total timesteps for training")
+    ap.add_argument("--eval-freq", type=int, default=2_500, help="evaluate every N timesteps")
+    ap.add_argument("--eval-episodes", type=int, default=10, help="episodes per evaluation")
+    ap.add_argument("--lr", type=float, default=3e-4, help="learning rate")
+    ap.add_argument("--n-steps", type=int, default=1024, help="PPO rollout steps")
+    ap.add_argument("--batch-size", type=int, default=256, help="PPO batch size")
+    ap.add_argument("--gamma", type=float, default=0.99)
+    ap.add_argument("--gae-lambda", type=float, default=0.95)
+    ap.add_argument("--log-root", type=str, default="logs", help="root folder for logs/artifacts")
+    args = ap.parse_args()
+
+    # 目录与文件名
+    run_tag = datetime.now().strftime("%Y%m%d_%H%M%S")
+    log_dir = os.path.join(args.log_root, f"duckie_{args.map}_{run_tag}")
+    os.makedirs(log_dir, exist_ok=True)
+
+    monitor_csv_path = os.path.join(log_dir, "monitor.csv")
+    best_model_dir = os.path.join(log_dir, "best_model")
+    os.makedirs(best_model_dir, exist_ok=True)
+
+    # 环境
+    train_env = DummyVecEnv([lambda: make_train_env(args.map)])
+    train_env = VecMonitor(train_env, filename=monitor_csv_path)  # 写 monitor.csv
+
+    eval_env = DummyVecEnv([lambda: make_eval_env(args.map)])
+    eval_env = VecMonitor(eval_env)
+
+    # 模型
+    model = PPO(
+        "CnnPolicy",
+        train_env,
+        learning_rate=args.lr,
+        n_steps=args.n_steps,
+        batch_size=args.batch_size,
+        gamma=args.gamma,
+        gae_lambda=args.gae_lambda,
+        verbose=1,
+        tensorboard_log=log_dir,  # 可配合 tensorboard
+    )
+
+    # 记录到 CSV + TensorBoard
+    new_logger = configure(folder=log_dir, format_strings=["stdout", "csv", "tensorboard"])
+    model.set_logger(new_logger)
+
+    # 评估回调（写 evaluations.npz & 保存最优模型）
+    eval_callback = EvalCallback(
+        eval_env,
+        best_model_save_path=best_model_dir,
+        log_path=log_dir,                # evaluations.npz
+        eval_freq=args.eval_freq,
+        n_eval_episodes=args.eval_episodes,
+        deterministic=True,
+        render=False
+    )
+
+    # 训练
+    print(f"[INFO] Start training on map={args.map}, timesteps={args.timesteps}")
+    model.learn(total_timesteps=args.timesteps, callback=eval_callback)
+
+    # 保存最后模型
+    final_model_path = os.path.join(log_dir, "final_model.zip")
+    model.save(final_model_path)
+
+    # 出图
+    eval_npz_path = os.path.join(log_dir, "evaluations.npz")
+    out_png = os.path.join(log_dir, "training_curves.png")
+    plot_training_curves(monitor_csv_path, eval_npz_path, out_png)
+
+    # 汇总提示
+    print("\nArtifacts:")
+    print(f"- Monitor CSV : {monitor_csv_path}")
+    print(f"- Eval npz    : {eval_npz_path} (if EvalCallback ran at least once)")
+    print(f"- Curves PNG  : {out_png}")
+    print(f"- Final model : {final_model_path}")
+    print(f"- Best model  : {os.path.join(best_model_dir, 'best_model.zip')}")
+    print(f"- TensorBoard : tensorboard --logdir {log_dir}\n")
+
+
+if __name__ == "__main__":
+    main()
